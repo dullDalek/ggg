@@ -475,8 +475,8 @@
     {
       id: 'first-task-1',
       no: '第一次',
-      title: '任务一',
-      desc: '图片提取：舆情评论数据清洗与情绪指标导出',
+      title: '初步业务活动之舆情分析',
+      desc: '舆情评论、股价数据清洗、JIEBA 分词与词频计算',
       tasks: [
         {
           no: '任务一',
@@ -496,335 +496,96 @@ data.to_csv("评论数据清洗.csv", encoding="utf-8-sig")
 
 data2 = df.loc[:, ["发帖日期", "积极帖子数量", "中立帖子数量", "消极帖子数量"]]
 data2.to_csv("量化情绪指标.csv", encoding="utf-8-sig")`
-        }
-      ]
-    },
-    {
-      id: 'lab1',
-      no: 'Lab 01',
-      title: 'pandas 基础与数据导入',
-      desc: '掌握 DataFrame 基本操作，导入审计底稿数据',
-      tasks: [
-        {
-          no: 'Task 1',
-          title: '读取凭证数据并初步查看',
-          tags: ['pandas', 'IO'],
-          code: `import pandas as pd
-
-# 读取凭证明细 CSV
-df = pd.read_csv('vouchers.csv', encoding='utf-8-sig')
-
-# 基础信息
-print(df.shape)              # (行数, 列数)
-print(df.dtypes)             # 各列数据类型
-print(df.head())             # 前 5 行
-print(df.describe())         # 数值列统计
-
-# 查看缺失情况
-print(df.isnull().sum())`
         },
         {
-          no: 'Task 2',
-          title: '多表合并：凭证 + 科目',
-          tags: ['merge', 'join'],
-          code: `import pandas as pd
+          no: '任务2',
+          title: '第一次-任务2',
+          tags: ['pandas', '股价数据', '数据清洗'],
+          code: `import numpy as np
+import pandas as pd
 
-vouchers = pd.read_csv('vouchers.csv')
-accounts = pd.read_csv('accounts.csv')
+df = pd.read_csv("实战演练-初步业务活动之舆情分析/数据源02股价数据.csv", header=1)[1:]
 
-# 按科目编码左连接
-merged = vouchers.merge(
-    accounts[['account_code', 'account_name', 'account_type']],
-    on='account_code',
-    how='left'
-)
+df = df.fillna(value=0)
 
-# 检查合并后是否有未匹配的科目
-unmatched = merged[merged['account_name'].isnull()]
-print(f'未匹配科目数: {len(unmatched)}')
-
-merged.to_csv('vouchers_with_accounts.csv', index=False)`
-        }
-      ]
-    },
-    {
-      id: 'lab2',
-      no: 'Lab 02',
-      title: '数据清洗与质量检查',
-      desc: '处理缺失值、重复值、异常格式',
-      tasks: [
+data = df.loc[:, ['交易日期', '日最高价', '日最低价', '日收盘价', '日开盘价']]
+data.to_csv("股价数据清洗.csv", encoding='utf-8-sig')`
+        },
         {
-          no: 'Task 1',
-          title: '缺失值处理三板斧',
-          tags: ['清洗', '缺失值'],
+          no: '任务3',
+          title: '第一次-任务3',
+          tags: ['pandas', '舆情分析', '数据清洗'],
+          code: `import numpy as np
+import pandas as pd
+
+df = pd.read_csv("实战演练-初步业务活动之舆情分析/数据源01评论数据.csv")
+
+df["帖子阅读量"]=df['帖子总数量']*df['帖子平均阅读量']
+df["帖子评论量"]=df['帖子总数量']*df['帖子平均评论量']
+df["帖子点赞量"]=df['帖子总数量']*df['帖子平均点赞量']
+
+data=df.loc[:,["发帖日期",'帖子总数量','帖子阅读量','帖子评论量','帖子点赞量']]
+data.to_csv("评论数据清洗.csv",encoding='utf-8-sig')
+
+data2=df.loc[:,["发帖日期",'积极帖子数量','中立帖子数量','消极帖子数量']]
+data2.to_csv("量化情绪指标.csv",encoding='utf-8-sig')`
+        },
+        {
+          no: '任务4',
+          title: '第一次-任务4：JIEBA分词',
+          tags: ['pandas', 'jieba', '分词'],
           code: `import pandas as pd
 import numpy as np
+import jieba
 
-df = pd.read_csv('transactions.csv')
+df = pd.read_csv("文本数据清洗.csv")
 
-# 1) 删除全为空的行/列
-df = df.dropna(how='all')
-df = df.dropna(axis=1, how='all')
+stopword = pd.read_csv("实战演练-初步业务活动之舆情分析/数据源04stoplist.csv")
+stopword = stopword["停用词"].to_list()
 
-# 2) 关键字段缺失则丢弃整行
-df = df.dropna(subset=['voucher_id', 'amount', 'date'])
+jieba.load_userdict("实战演练-初步业务活动之舆情分析/数据源06保留词库dict.txt")
 
-# 3) 非关键字段填充
-df['remark'] = df['remark'].fillna('无')
-df['dept'] = df['dept'].fillna(df['dept'].mode()[0])
-df['amount'] = df['amount'].fillna(0)
+# 制作分词函数
+def cutword(text):
+    text = str(text)
+    cutwords = jieba.lcut(text)
+    cutwords = pd.Series(cutwords)
+    cutwords = ' '.join(cutwords[~cutwords.isin(stopword)])
+    return cutwords
 
-print(f'清洗后行数: {len(df)}')`
+# 执行分词
+df["分词"] = df["文本_清洗后"].apply(cutword)
+df.to_csv("./jieba分词结果.csv")
+print("ok")`
         },
         {
-          no: 'Task 2',
-          title: '重复凭证检测',
-          tags: ['去重', '审计'],
-          code: `import pandas as pd
-
-df = pd.read_csv('vouchers.csv')
-
-# 完全重复的记录
-exact_dup = df[df.duplicated(keep=False)]
-print(f'完全重复记录: {len(exact_dup)} 条')
-
-# 业务键重复（同一天、同金额、同对方单位）
-biz_dup = df[df.duplicated(
-    subset=['date', 'amount', 'counterparty'],
-    keep=False
-)].sort_values(['date', 'amount'])
-
-biz_dup.to_csv('suspect_duplicates.csv', index=False)
-print(f'业务重复记录: {len(biz_dup)} 条')`
-        },
-        {
-          no: 'Task 3',
-          title: '日期与金额格式标准化',
-          tags: ['格式化', '类型转换'],
-          code: `import pandas as pd
-
-df = pd.read_csv('messy_data.csv')
-
-# 日期：支持多种格式 -> 统一 datetime
-df['date'] = pd.to_datetime(df['date'], errors='coerce', format='mixed')
-
-# 金额：清掉千分位逗号、人民币符号、空格
-df['amount'] = (
-    df['amount'].astype(str)
-                .str.replace(',', '', regex=False)
-                .str.replace('¥', '', regex=False)
-                .str.strip()
-)
-df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
-
-dirty = df[df['date'].isnull() | df['amount'].isnull()]
-print(f'仍有问题的记录: {len(dirty)}')`
-        }
-      ]
-    },
-    {
-      id: 'lab3',
-      no: 'Lab 03',
-      title: '分组聚合与审计指标',
-      desc: 'groupby 计算科目余额、部门支出占比等',
-      tasks: [
-        {
-          no: 'Task 1',
-          title: '按科目汇总借贷发生额',
-          tags: ['groupby', '聚合'],
-          code: `import pandas as pd
-
-df = pd.read_csv('vouchers.csv')
-
-summary = df.groupby('account_code').agg(
-    debit_total=('debit', 'sum'),
-    credit_total=('credit', 'sum'),
-    voucher_count=('voucher_id', 'nunique')
-).reset_index()
-
-summary['balance'] = summary['debit_total'] - summary['credit_total']
-summary = summary.sort_values('balance', key=abs, ascending=False)
-
-print(summary.head(20))
-summary.to_excel('account_summary.xlsx', index=False)`
-        },
-        {
-          no: 'Task 2',
-          title: '部门月度支出 TopN',
-          tags: ['透视表', 'TopN'],
-          code: `import pandas as pd
-
-df = pd.read_csv('expenses.csv')
-df['date'] = pd.to_datetime(df['date'])
-df['month'] = df['date'].dt.to_period('M')
-
-pivot = df.pivot_table(
-    index='dept',
-    columns='month',
-    values='amount',
-    aggfunc='sum',
-    fill_value=0
-)
-
-pivot['总计'] = pivot.sum(axis=1)
-top_depts = pivot.nlargest(10, '总计')
-
-print(top_depts)`
-        }
-      ]
-    },
-    {
-      id: 'lab4',
-      no: 'Lab 04',
-      title: '异常检测：Z-score 与 IQR',
-      desc: '统计方法识别异常交易与可疑金额',
-      tasks: [
-        {
-          no: 'Task 1',
-          title: 'Z-score 识别异常金额',
-          tags: ['异常检测', '统计'],
+          no: '任务5',
+          title: '第一次-任务5：词频计算',
+          tags: ['pandas', 'Counter', '词频'],
           code: `import pandas as pd
 import numpy as np
+from collections import Counter
 
-df = pd.read_csv('transactions.csv')
+df = pd.read_csv("jieba分词结果.csv")
 
-def z_score(s):
-    return (s - s.mean()) / s.std()
+df['分词'] = df['分词'].astype(str)
+text = ' '.join(df['分词'])
+text = text.split()
+counter = Counter(text)
 
-df['z'] = df.groupby('account_code')['amount'].transform(z_score)
+data1 = counter.most_common(100)
+data1 = pd.DataFrame(data1, columns=['词语', '出现次数'])
+data1 = data1[data1["词语"] != "明康"]
+data1 = data1[data1["词语"] != "药业"]
+data1 = data1[data1["词语"] != "生物"]
+data1.to_csv('词云图结果.csv', encoding='utf-8-sig')
 
-# |z| > 3 视为异常
-outliers = df[df['z'].abs() > 3].copy()
-outliers = outliers.sort_values('z', key=abs, ascending=False)
+data2 = counter.most_common()
+data2 = pd.DataFrame(data2, columns=['词语', '出现次数'])
 
-print(f'异常交易数: {len(outliers)}')
-outliers.to_csv('zscore_outliers.csv', index=False)`
-        },
-        {
-          no: 'Task 2',
-          title: 'IQR 箱线图法异常检测',
-          tags: ['IQR', '异常检测'],
-          code: `import pandas as pd
-import numpy as np
-
-df = pd.read_csv('transactions.csv')
-
-def detect_iqr(group):
-    Q1 = group['amount'].quantile(0.25)
-    Q3 = group['amount'].quantile(0.75)
-    IQR = Q3 - Q1
-    lower = Q1 - 1.5 * IQR
-    upper = Q3 + 1.5 * IQR
-    group['is_outlier'] = (group['amount'] < lower) | (group['amount'] > upper)
-    return group
-
-result = df.groupby('account_code', group_keys=False).apply(detect_iqr)
-outliers = result[result['is_outlier']]
-
-print(f'IQR 异常数: {len(outliers)}')`
-        }
-      ]
-    },
-    {
-      id: 'lab5',
-      no: 'Lab 05',
-      title: 'Benford 定律审计应用',
-      desc: '检测可能的舞弊或人为编造的财务数据',
-      tasks: [
-        {
-          no: 'Task 1',
-          title: 'Benford 首位数字分布检验',
-          tags: ['Benford', '舞弊检测'],
-          code: `import pandas as pd
-import numpy as np
-
-df = pd.read_csv('amounts.csv')
-
-amounts = df['amount'].abs()
-amounts = amounts[amounts >= 1]
-first_digits = amounts.astype(str).str[0].astype(int)
-
-actual = first_digits.value_counts(normalize=True).sort_index()
-benford = pd.Series({d: np.log10(1 + 1/d) for d in range(1, 10)})
-
-compare = pd.DataFrame({'实际': actual, 'Benford': benford})
-compare['偏差'] = (compare['实际'] - compare['Benford']).abs()
-
-print(compare.round(4))
-print('最异常的首位数字:', compare['偏差'].idxmax())`
-        },
-        {
-          no: 'Task 2',
-          title: 'Benford 卡方检验',
-          tags: ['假设检验', '卡方'],
-          code: `import pandas as pd
-import numpy as np
-from scipy import stats
-
-df = pd.read_csv('amounts.csv')
-
-amounts = df['amount'].abs()
-amounts = amounts[amounts >= 1]
-first_digits = amounts.astype(str).str[0].astype(int)
-
-observed = first_digits.value_counts().sort_index()
-n = observed.sum()
-expected = pd.Series({d: n * np.log10(1 + 1/d) for d in range(1, 10)})
-
-chi2, p_value = stats.chisquare(observed, expected)
-
-print(f'卡方统计量: {chi2:.4f}')
-print(f'p-value: {p_value:.4f}')
-print('数据' + ('符合' if p_value > 0.05 else '不符合') + ' Benford 分布')`
-        }
-      ]
-    },
-    {
-      id: 'lab6',
-      no: 'Lab 06',
-      title: '时间序列与趋势分析',
-      desc: '识别可疑入账时点与同环比异动',
-      tasks: [
-        {
-          no: 'Task 1',
-          title: '识别非工作时间凭证',
-          tags: ['时间', '审计预警'],
-          code: `import pandas as pd
-
-df = pd.read_csv('vouchers.csv')
-df['create_time'] = pd.to_datetime(df['create_time'])
-
-df['weekday'] = df['create_time'].dt.day_name()
-df['hour'] = df['create_time'].dt.hour
-df['is_weekend'] = df['create_time'].dt.weekday >= 5
-df['is_after_hours'] = (df['hour'] < 8) | (df['hour'] >= 20)
-
-suspect = df[df['is_weekend'] | df['is_after_hours']]
-print(f'可疑时点凭证: {len(suspect)} 条')
-
-df.groupby(['weekday','hour']).size().unstack(fill_value=0)`
-        },
-        {
-          no: 'Task 2',
-          title: '月度环比与同比分析',
-          tags: ['趋势', '同环比'],
-          code: `import pandas as pd
-
-df = pd.read_csv('monthly_revenue.csv')
-df['date'] = pd.to_datetime(df['date'])
-df = df.set_index('date').sort_index()
-
-monthly = df['revenue'].resample('M').sum()
-monthly_mom = monthly.pct_change() * 100
-monthly_yoy = monthly.pct_change(periods=12) * 100
-
-result = pd.DataFrame({
-    '收入': monthly,
-    '环比%': monthly_mom.round(2),
-    '同比%': monthly_yoy.round(2)
-})
-
-print(result.tail(15))`
+df_fina = pd.read_excel("实战演练-初步业务活动之舆情分析/数据源05财务词汇.xlsx")
+df_merge = pd.merge(data2, df_fina, left_on='词语', right_on='关注词', how='inner')
+df_merge.to_csv('关注词结果.csv', encoding='utf-8-sig')`
         }
       ]
     }
